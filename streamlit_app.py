@@ -27,15 +27,54 @@ from sklearn.preprocessing import MinMaxScaler
 
 import warnings
 warnings.filterwarnings("ignore")
+import streamlit as st
+import streamlit.components.v1 as components
+
+
+st.set_page_config(page_title="ML & trading", page_icon="👋")
+
+custom_css = """
+<style>
+    .title {
+        color: #ff6347;
+        font-size: 80px; 
+        text-align: center; 
+    }
+    .css-1wlt93b {
+        padding-top: 0rem;
+    }
+</style>
+"""
+
+st.markdown(custom_css, unsafe_allow_html=True)
+st.markdown('<div class="title">Machine learning & stratégie de trading</div>', unsafe_allow_html=True)
+
+st.balloons()
+
+def add_bg_from_url():
+    st.markdown(
+        f"""
+         <style>
+         .stApp {{
+             background-image: url("https://w.wallhaven.cc/full/9d/wallhaven-9dmeyw.jpg");
+             background-size: cover;
+             background-attachment: fixed;
+             background-repeat: no-repeat;
+             background-position: center center;
+         }}
+         </style>
+         """,
+        unsafe_allow_html=True
+    )
+
+add_bg_from_url()
+
 
 ##########################################################################################################
 ########             PARAMETRES DU DASHBOARD                                                      ########
 ##########################################################################################################
 
-st.set_page_config(page_title="ML & trading", page_icon="👋")
-st.write('## Machine learning & stratégie de trading')
-# st.snow()  # effet neige sur le code
-st.balloons()
+
 
 
 linkMA = 'https://www.investopedia.com/terms/m/movingaverage.asp'
@@ -107,11 +146,28 @@ with st.sidebar:
         ''',
                 unsafe_allow_html=True)
 
-image = Image.open("logoeco.png")
-st.image(image)
+from PIL import Image
+import streamlit as st
 
-st.write(
-    '#### Entrez le ticker comme ceci : AAPL, TSLA, AMZN, ... puis appuyez sur la fonction Création de notre dataframe')
+image = Image.open("logo.png")
+
+col1, col2, col3 = st.columns([1,2,1])
+
+with col2:
+    st.image(image)
+
+custom_css = """
+<style>
+.custom-text {
+    color: #FF6347; /* 番茄色 */
+    font-size: 24px; /* 字体大小 */
+}
+</style>
+"""
+
+st.markdown(custom_css, unsafe_allow_html=True)
+
+st.markdown('<p class="custom-text">Entrez le ticker comme ceci : AAPL, TSLA, AMZN, ... puis appuyez sur la fonction Création de notre dataframe</p>', unsafe_allow_html=True)
 ticker = st.text_input(' ', "BTC-USD", placeholder="Entrez votre ticker ... ")
 
 
@@ -174,6 +230,99 @@ if len(ticker) != 0:  # si l'utilisateur entre une série de ticker alors l'inte
 
        #  st.session_state["best_C"] = best_C
        #  st.session_state["best_penalty"] = best_penalty
+
+        # ##########################################################################################################
+        # ########             Partie prédiction                                                            ########
+        # ##########################################################################################################
+
+        st.write("## Prédiction (intervalle de deux minutes)")
+
+        agree1 = 'Utiliser les modèles précédents (aucun fichier à charger) '
+        agree2 = ''
+
+        #option = st.selectbox("Choisir un modèle pickle (à charger au préalable) ou utiliser le modèle précédent, choisir une option :",(agree1, agree2))
+        option = st.selectbox("Utiliser le modèle précédent :",(agree1, agree2))
+        if "button_clicked" not in st.session_state:
+
+            st.session_state.button_clicked = False
+
+        if option == agree1:
+
+            model = []
+            prediction1 = fc.mlAlgoPred(data, forecast_out, model,size , best_paramRF_criterion,best_paramRF_n_estimators, best_paramRF_max_depth,best_paramGBM_max_depth,best_paramGBM_n_estimators, best_C, best_penalty,False)
+            somme1, conscensus, conscensus2 = fc.OperationOnDF(data, prediction1, forecast_out, False)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.write("##### Nos données de base :")
+                st.write(data)
+
+            with col2:
+                st.write("##### Notre prédiction :")
+                st.write(conscensus.tail(forecast_out + 1).style.background_gradient(axis=None))
+
+            st.write("##### Notre prédiction sur les {} prochaines minutes".format(2 * forecast_out))
+
+            s = conscensus['Date']
+
+            fig = go.Figure()
+
+            fig = fig.add_trace(go.Scatter(x=s, y=conscensus["RF_direction"],opacity=0.45,
+                                     mode='markers+lines',
+                                     name='Prediction RF'))
+            fig = fig.add_trace(go.Scatter(x=s, y=conscensus["LR_direction"],
+                                     opacity=0.45,
+                                     mode='markers+lines',
+                                     name='Prediction LR '))
+            fig = fig.add_trace(go.Scatter(x=s, y=conscensus["GBM_direction"],
+                       opacity=0.45,
+                       mode='markers+lines',
+                       name='Prediction GBM '))
+
+            fig = fig.update_layout(showlegend=True)
+            st.plotly_chart(fig)
+
+            st.write("##### Conscensus des 3 prédictions")
+            fig2 = go.Figure()
+            fig2 = px.line(conscensus2, x="Date", y="direction", text="direction", markers=True)
+            fig2.update_traces(textposition="bottom right")
+            st.plotly_chart(fig2)
+            
+            st.write("L'algorithme ne gère pas les prédictions en période de clôture de marché, choisir un crypto-actif si jamais vous voulez effectuer la prédiction hors ouverture. ")
+
+            st.download_button("Téléchargement du modèle Random Forest en format pickle", data=pickle.dumps(modelRF), file_name="rf.pkl")
+            st.download_button("Téléchargement du modèle Gradient Boosting en format pickle", data=pickle.dumps(modelGBM), file_name="gbm.pkl")
+            st.download_button("Téléchargement du modèle Logistic Regression en format pickle", data=pickle.dumps(modellr), file_name="lr.pkl")
+
+    #    if option == agree2:
+
+    #        uploaded_file = st.file_uploader("Insérer un fichier pickle (pkl) du dernier modèle utilisé (il doit comporter le même nombre de variable que le modèle précédent)")
+
+    #        if uploaded_file is not None:
+    #            model = pickle.loads(uploaded_file.read())
+
+    #            st.write("Votre fichier", model)
+            # prediction1 = mlAlgoPred(st.session_state["data"], forecast_out, model, st.session_state["size"])
+    #            prediction1 = fc.mlAlgoPred(st.session_state["data"], forecast_out, model, st.session_state["size"] , st.session_state["best_paramRF_criterion"] ,st.session_state["best_paramRF_n_estimators"], st.session_state["best_paramRF_max_depth"], st.session_state["best_paramGBM_max_depth"],st.session_state["best_paramGBM_n_estimators"], st.session_state["best_C"], st.session_state["best_penalty"], True)
+    #            somme1, conscensus, conscensus2 = fc.OperationOnDF(st.session_state["data"], prediction1, forecast_out, True)
+
+    #            col1, col2 = st.columns(2)
+
+    #            with col1:
+    #                st.write("##### Nos données de base :")
+    #                st.write(st.session_state["data"])
+
+    #            with col2:
+    #                st.write("##### Notre prédiction :")
+    #                st.write(conscensus.tail(forecast_out + 1))
+
+    #           st.write("##### Notre prédiction sur les {} prochaines minutes".format(2* forecast_out))
+    #           fig = go.Figure()
+    #           fig = px.line(conscensus, x="Date", y="direction", text="direction", markers=True)
+    #            fig.update_traces(textposition="bottom right")
+    #           st.plotly_chart(fig)
+
     
 else:
     st.write("Pas de ticker")
