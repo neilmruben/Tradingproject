@@ -231,69 +231,9 @@ if len(ticker) != 0:  # si l'utilisateur entre une série de ticker alors l'inte
        #  st.session_state["best_C"] = best_C
        #  st.session_state["best_penalty"] = best_penalty
 
-        # ##########################################################################################################
-        # ########             Partie prédiction                                                            ########
-        # ##########################################################################################################
-
-        st.write("## Prédiction (intervalle de deux minutes)")
-
-        agree1 = 'Utiliser les modèles précédents (aucun fichier à charger) '
-        agree2 = ''
-
-        #option = st.selectbox("Choisir un modèle pickle (à charger au préalable) ou utiliser le modèle précédent, choisir une option :",(agree1, agree2))
-        option = st.selectbox("Utiliser le modèle précédent :",(agree1, agree2))
-        if "button_clicked" not in st.session_state:
-
-            st.session_state.button_clicked = False
-
-        if option == agree1:
-
-            model = []
-            prediction1 = fc.mlAlgoPred(data, forecast_out, model,size , best_paramRF_criterion,best_paramRF_n_estimators, best_paramRF_max_depth,best_paramGBM_max_depth,best_paramGBM_n_estimators, best_C, best_penalty,False)
-            somme1, conscensus, conscensus2 = fc.OperationOnDF(data, prediction1, forecast_out, False)
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.write("##### Nos données de base :")
-                st.write(data)
-
-            with col2:
-                st.write("##### Notre prédiction :")
-                st.write(conscensus.tail(forecast_out + 1).style.background_gradient(axis=None))
-
-            st.write("##### Notre prédiction sur les {} prochaines minutes".format(2 * forecast_out))
-
-            s = conscensus['Date']
-
-            fig = go.Figure()
-
-            fig = fig.add_trace(go.Scatter(x=s, y=conscensus["RF_direction"],opacity=0.45,
-                                     mode='markers+lines',
-                                     name='Prediction RF'))
-            fig = fig.add_trace(go.Scatter(x=s, y=conscensus["LR_direction"],
-                                     opacity=0.45,
-                                     mode='markers+lines',
-                                     name='Prediction LR '))
-            fig = fig.add_trace(go.Scatter(x=s, y=conscensus["GBM_direction"],
-                       opacity=0.45,
-                       mode='markers+lines',
-                       name='Prediction GBM '))
-
-            fig = fig.update_layout(showlegend=True)
-            st.plotly_chart(fig)
-
-            st.write("##### Conscensus des 3 prédictions")
-            fig2 = go.Figure()
-            fig2 = px.line(conscensus2, x="Date", y="direction", text="direction", markers=True)
-            fig2.update_traces(textposition="bottom right")
-            st.plotly_chart(fig2)
-            
-            st.write("L'algorithme ne gère pas les prédictions en période de clôture de marché, choisir un crypto-actif si jamais vous voulez effectuer la prédiction hors ouverture. ")
-
-            st.download_button("Téléchargement du modèle Random Forest en format pickle", data=pickle.dumps(modelRF), file_name="rf.pkl")
-            st.download_button("Téléchargement du modèle Gradient Boosting en format pickle", data=pickle.dumps(modelGBM), file_name="gbm.pkl")
-            st.download_button("Téléchargement du modèle Logistic Regression en format pickle", data=pickle.dumps(modellr), file_name="lr.pkl")
+       # ##########################################################################################################
+       # ########             Partie prédiction                                                            ########
+   #       st.download_button("Téléchargement du modèle Logistic Regression en format pickle", data=pickle.dumps(modellr), file_name="lr.pkl")
 
     #    if option == agree2:
 
